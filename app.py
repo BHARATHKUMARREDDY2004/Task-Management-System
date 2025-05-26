@@ -10,7 +10,18 @@ import secrets
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = secrets.token_hex(16)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tasks.db'
+
+# Configure database
+# For Vercel, we'll use a temporary in-memory database for demo purposes
+# In a real app, you would use a managed database service
+is_vercel = 'VERCEL' in os.environ
+if is_vercel:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    print("Running on Vercel with in-memory database")
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tasks.db'
+    print("Running locally with file database")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -165,8 +176,16 @@ def execute_query():
     
     # Execute the query
     try:
-        db_path = os.path.join(app.root_path, 'instance', 'tasks.db')
-        conn = sqlite3.connect(db_path)
+        # Use the appropriate database path based on environment
+        is_vercel = 'VERCEL' in os.environ
+        if is_vercel:
+            # For Vercel, we need to use the in-memory database
+            conn = sqlite3.connect(':memory:')
+        else:
+            # For local development, use the file database
+            db_path = os.path.join(app.root_path, 'instance', 'tasks.db')
+            conn = sqlite3.connect(db_path)
+        
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -228,6 +247,48 @@ def initialize_database_if_empty():
             except Exception as e:
                 print(f"Error initializing database: {e}")
 
+# Initialize the database (especially important for Vercel's in-memory database)
+with app.app_context():
+    db.create_all()
+    # Check if the database is empty
+    if Task.query.first() is None:
+        try:
+            # Import and call init_database if not on Vercel
+            if not ('VERCEL' in os.environ):
+                from init_db import init_database
+                init_database()
+            else:
+                # Create some sample data for Vercel demo
+                from datetime import date
+                sample_tasks = [
+                    Task(
+                        title="Setup Development Environment",
+                        description="Install Python, Flask, and set up the project structure",
+                        status="completed",
+                        priority="high",
+                        due_date=date(2025, 1, 15)
+                    ),
+                    Task(
+                        title="Design Database Schema",
+                        description="Create the database models for the task management system",
+                        status="completed",
+                        priority="high",
+                        due_date=date(2025, 1, 20)
+                    ),
+                    Task(
+                        title="Implement CRUD Operations",
+                        description="Build Create, Read, Update, Delete functionality for tasks",
+                        status="in_progress",
+                        priority="high",
+                        due_date=date(2025, 1, 25)
+                    )
+                ]
+                for task in sample_tasks:
+                    db.session.add(task)
+                db.session.commit()
+                print("Vercel database initialized with sample data")
+        except Exception as e:
+            print(f"Error initializing database: {e}")
+
 if __name__ == '__main__':
-    initialize_database_if_empty()
     app.run(debug=True)
