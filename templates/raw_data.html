@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}SQL Data{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>SQL Table Data</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Custom SQL Query</h5>
+            <a href="{{ url_for('index') }}" class="btn btn-sm btn-primary">Back to Tasks</a>
+        </div>
+        <div class="card-body">
+            <div class="schema-info mb-4">
+                <h6 class="mb-2">Database Schema Information:</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Table</th>
+                                <th>Column</th>
+                                <th>Type</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td rowspan="8">task</td>
+                                <td>id</td>
+                                <td>INTEGER</td>
+                                <td>Primary Key</td>
+                            </tr>
+                            <tr>
+                                <td>title</td>
+                                <td>VARCHAR(100)</td>
+                                <td>NOT NULL</td>
+                            </tr>
+                            <tr>
+                                <td>description</td>
+                                <td>TEXT</td>
+                                <td>NULL allowed</td>
+                            </tr>
+                            <tr>
+                                <td>status</td>
+                                <td>VARCHAR(20)</td>
+                                <td>Default: 'pending'</td>
+                            </tr>
+                            <tr>
+                                <td>priority</td>
+                                <td>VARCHAR(10)</td>
+                                <td>Default: 'medium'</td>
+                            </tr>
+                            <tr>
+                                <td>due_date</td>
+                                <td>DATE</td>
+                                <td>NULL allowed</td>
+                            </tr>
+                            <tr>
+                                <td>created_at</td>
+                                <td>DATETIME</td>
+                                <td>Default: current timestamp</td>
+                            </tr>
+                            <tr>
+                                <td>updated_at</td>
+                                <td>DATETIME</td>
+                                <td>Default: current timestamp</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="query-examples mb-2">
+                    <details>
+                        <summary>Example Queries</summary>
+                        <div class="query-example">
+                            <pre><code>SELECT * FROM task WHERE status = 'pending';</code></pre>
+                        </div>
+                        <div class="query-example">
+                            <pre><code>SELECT title, priority, due_date FROM task ORDER BY due_date ASC;</code></pre>
+                        </div>
+                        <div class="query-example">
+                            <pre><code>SELECT status, COUNT(*) as task_count FROM task GROUP BY status;</code></pre>
+                        </div>
+                    </details>
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('execute_query') }}">
+                <div class="form-group">
+                    <label for="sql-query"><strong>Enter SQL Query:</strong></label>
+                    <textarea class="form-control" id="sql-query" name="query" rows="4" placeholder="SELECT * FROM task;">{{ query if query else 'SELECT * FROM task;' }}</textarea>
+                </div>
+                <div class="form-group mt-3">
+                    <button type="submit" class="btn btn-primary">Execute Query</button>
+                </div>
+            </form>
+            
+            {% if error %}
+            <div class="alert alert-danger mt-3">
+                <strong>Error:</strong> {{ error }}
+            </div>
+            {% endif %}
+            
+            {% if results %}
+            <div class="query-results mt-4">
+                <h6>Query Results:</h6>
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered">
+                        <thead class="thead-dark">
+                            <tr>
+                                {% for column in columns %}
+                                <th>{{ column }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in results %}
+                            <tr>
+                                {% for value in row %}
+                                <td>{{ value }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted">{{ results|length }} row(s) returned</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Tasks Table</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Due Date</th>
+                            <th>Created At</th>
+                            <th>Updated At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in tasks %}
+                        <tr>
+                            <td>{{ task.id }}</td>
+                            <td>{{ task.title }}</td>
+                            <td>{{ task.description }}</td>
+                            <td>
+                                <span class="badge {% if task.status == 'completed' %}bg-success{% elif task.status == 'in_progress' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                    {{ task.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-primary{% else %}bg-info{% endif %}">
+                                    {{ task.priority }}
+                                </span>
+                            </td>
+                            <td>{{ task.due_date if task.due_date else 'None' }}</td>
+                            <td>{{ task.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>{{ task.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
